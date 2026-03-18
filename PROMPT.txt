@@ -1,0 +1,562 @@
+Here is a comprehensive, detailed prompt you can use to build this Hotel PMS system:
+
+---
+
+# 🏨 Beverly Hotels — Property Management System (PMS)
+## Full-Stack Development Prompt
+
+---
+
+### PROJECT OVERVIEW
+
+Build a **multi-property Hotel Property Management System (PMS)** for the **Beverly Hotel Chain**, comprising three properties:
+- **Beverly Hills**
+- **Beverly Beach**
+- **Beverly Suites**
+
+**Tech Stack:**
+- **Frontend:** React 18+ with TypeScript, Vite, TailwindCSS, React Router v6, React Query (TanStack Query), React Hook Form + Zod validation, Axios
+- **Backend:** Node.js with Express, TypeScript (ESM `import` syntax — never `require`), Zod for request validation
+- **Database:** MySQL 8+ with raw SQL or Knex.js query builder (no ORM like Prisma/Sequelize)
+- **Auth:** JWT (access + refresh tokens), bcrypt for passwords
+- **Mobile Responsive:** All screens must be fully functional on mobile (375px+), tablet (768px+), and desktop (1280px+)
+
+---
+
+### SYSTEM ARCHITECTURE
+
+```
+/
+├── client/                  # React + TypeScript frontend
+│   ├── src/
+│   │   ├── api/             # Axios API calls
+│   │   ├── components/      # Shared UI components
+│   │   ├── pages/           # Route-level pages
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── context/         # Auth context, Hotel context
+│   │   ├── types/           # Shared TypeScript types
+│   │   └── utils/           # Helpers (date, currency, etc.)
+│
+├── server/                  # Node.js + Express backend
+│   ├── src/
+│   │   ├── routes/          # Express routers
+│   │   ├── controllers/     # Business logic
+│   │   ├── middleware/       # Auth, error handling
+│   │   ├── db/              # MySQL connection + queries
+│   │   ├── types/           # Shared TypeScript types
+│   │   └── utils/           # Helpers
+│
+└── shared/                  # Types/enums shared between client & server
+```
+
+---
+
+### DATABASE SCHEMA (MySQL)
+
+Create the following tables. Use `InnoDB`, `utf8mb4` charset, and proper foreign keys.
+
+#### `hotels`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(100) NOT NULL,           -- 'Beverly Hills', 'Beverly Beach', 'Beverly Suites'
+slug VARCHAR(50) UNIQUE NOT NULL,     -- 'beverly-hills', etc.
+address TEXT,
+phone VARCHAR(30),
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+```
+
+#### `users`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+hotel_id INT NULL,                    -- NULL = super admin
+role ENUM('super_admin','admin','front_office','purchasing_manager') NOT NULL,
+name VARCHAR(100) NOT NULL,
+email VARCHAR(150) UNIQUE NOT NULL,
+password_hash VARCHAR(255) NOT NULL,
+is_active BOOLEAN DEFAULT TRUE,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY (hotel_id) REFERENCES hotels(id)
+```
+
+#### `room_categories`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+hotel_id INT NOT NULL,
+name VARCHAR(100) NOT NULL,           -- 'Standard', 'Deluxe', 'Entertainment', 'Fish Therapy'
+description TEXT,
+base_price DECIMAL(10,2) NOT NULL,
+sort_order INT DEFAULT 0,
+is_active BOOLEAN DEFAULT TRUE,
+FOREIGN KEY (hotel_id) REFERENCES hotels(id)
+```
+> Note: Categories are per-hotel and fully configurable by admin. Defaults: Standard, Deluxe, Entertainment, Fish Therapy.
+
+#### `rooms`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+hotel_id INT NOT NULL,
+room_category_id INT NOT NULL,
+room_number VARCHAR(20) NOT NULL,
+floor INT,
+capacity INT NOT NULL DEFAULT 2,          -- max guests before extra charge
+extra_person_charge DECIMAL(10,2) DEFAULT 0.00,
+grace_period_checkin_minutes INT DEFAULT 30,
+grace_period_checkout_minutes INT DEFAULT 30,
+early_checkin_fee DECIMAL(10,2) DEFAULT 0.00,
+late_checkout_fee DECIMAL(10,2) DEFAULT 0.00,
+is_active BOOLEAN DEFAULT TRUE,
+notes TEXT,
+UNIQUE KEY (hotel_id, room_number),
+FOREIGN KEY (hotel_id) REFERENCES hotels(id),
+FOREIGN KEY (room_category_id) REFERENCES room_categories(id)
+```
+
+#### `package_types`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+hotel_id INT NOT NULL,
+name VARCHAR(100) NOT NULL,              -- 'Short Time', 'Full Day', etc.
+min_hours DECIMAL(5,2) NULL,             -- NULL = no lower bound
+max_hours DECIMAL(5,2) NULL,             -- NULL = no upper bound
+price_multiplier DECIMAL(5,2) DEFAULT 1.00,
+flat_price DECIMAL(10,2) NULL,           -- override if not NULL
+description TEXT,
+is_active BOOLEAN DEFAULT TRUE,
+FOREIGN KEY (hotel_id) REFERENCES hotels(id)
+```
+> **Default package logic (configurable per hotel):**
+> - **Short Time:** duration `<= 4 hours`
+> - **Half Day:** `> 4 hours` and `<= 12 hours`
+> - **Full Day:** `> 12 hours` (or `>= 23 hours` as admin configures)
+> - Users can **stack packages** (e.g., 2× Short Time = equivalent of 8 hours billed as 2 short-time rates)
+
+#### `reservations`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+hotel_id INT NOT NULL,
+reservation_number VARCHAR(30) UNIQUE NOT NULL,  -- auto-generated e.g. BH-20240315-0042
+room_id INT NOT NULL,
+package_type_id INT NOT NULL,
+package_quantity INT NOT NULL DEFAULT 1,          -- for stacking (e.g. 2x Short Time)
+
+-- Guest info
+customer_name VARCHAR(150) NOT NULL,
+customer_phone VARCHAR(30) NOT NULL,
+customer_nic_passport VARCHAR(60) NOT NULL,
+num_people INT NULL,                              -- optional at reservation stage
+
+-- Scheduled times
+scheduled_checkin DATETIME NOT NULL,
+scheduled_checkout DATETIME NOT NULL,
+
+-- Status
+status ENUM('reserved','checked_in','checked_out','cancelled','no_show') DEFAULT 'reserved',
+
+-- Pricing
+base_amount DECIMAL(10,2) NOT NULL,
+extra_person_charge DECIMAL(10,2) DEFAULT 0.00,
+early_checkin_fee DECIMAL(10,2) DEFAULT 0.00,
+late_checkout_fee DECIMAL(10,2) DEFAULT 0.00,
+total_amount DECIMAL(10,2) NOT NULL,
+paid_amount DECIMAL(10,2) DEFAULT 0.00,
+balance DECIMAL(10,2) GENERATED ALWAYS AS (total_amount - paid_amount) STORED,
+
+-- Actual times (filled at check-in/check-out)
+actual_checkin DATETIME NULL,
+actual_checkout DATETIME NULL,
+
+created_by INT NOT NULL,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+FOREIGN KEY (hotel_id) REFERENCES hotels(id),
+FOREIGN KEY (room_id) REFERENCES rooms(id),
+FOREIGN KEY (package_type_id) REFERENCES package_types(id),
+FOREIGN KEY (created_by) REFERENCES users(id)
+```
+
+#### `reservation_guests`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+reservation_id INT NOT NULL,
+nic_passport VARCHAR(60),               -- optional per guest
+guest_name VARCHAR(150),
+is_primary BOOLEAN DEFAULT FALSE,
+FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE
+```
+
+#### `payments`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+reservation_id INT NOT NULL,
+amount DECIMAL(10,2) NOT NULL,
+payment_method ENUM('cash','card','bank_transfer','online','other') NOT NULL,
+payment_stage ENUM('reservation','checkin','checkout','adjustment') NOT NULL,
+reference_number VARCHAR(100),          -- card ref, transfer ID, etc.
+notes TEXT,
+created_by INT NOT NULL,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY (reservation_id) REFERENCES reservations(id),
+FOREIGN KEY (created_by) REFERENCES users(id)
+```
+
+#### `audit_log`
+```sql
+id INT PRIMARY KEY AUTO_INCREMENT,
+hotel_id INT,
+user_id INT,
+action VARCHAR(100),                    -- 'CREATE_RESERVATION', 'CHECKIN', etc.
+entity_type VARCHAR(50),
+entity_id INT,
+old_data JSON,
+new_data JSON,
+ip_address VARCHAR(45),
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+```
+
+---
+
+### BACKEND API — Express + TypeScript (ESM)
+
+All files use `import`/`export` syntax. Set `"type": "module"` in `package.json`. Use `.js` extensions in import paths (TypeScript ESM requirement).
+
+#### Auth Routes `POST /api/auth/`
+- `POST /login` → returns `{ accessToken, refreshToken, user: { id, name, role, hotel_id, hotel } }`
+- `POST /refresh` → refreshes access token
+- `POST /logout`
+
+#### Middleware
+- `authenticateToken` — validates JWT, attaches `req.user`
+- `requireRole(...roles)` — role-based guard
+- `requireHotel` — ensures user can only access their hotel (super_admin bypasses)
+- `errorHandler` — global error handler returning `{ success: false, message, errors? }`
+
+#### Reservations Routes `GET|POST /api/reservations/`
+
+- `GET /api/hotels/:hotelId/rooms/available` — query params: `checkin`, `checkout`, `packageTypeId`, `packageQty`
+  - Returns rooms not conflicting with the time window (considering actual check-in/out times and status)
+  - Groups by category
+  - Calculates price based on package + room category
+
+- `POST /api/reservations` — Create reservation
+  ```typescript
+  {
+    hotel_id: number,
+    room_id: number,
+    package_type_id: number,
+    package_quantity: number,
+    customer_name: string,
+    customer_phone: string,
+    customer_nic_passport: string,
+    num_people?: number,
+    scheduled_checkin: string,   // ISO datetime
+    scheduled_checkout: string,
+    initial_payment?: {
+      amount: number,
+      method: PaymentMethod,
+      reference?: string
+    }
+  }
+  ```
+
+- `POST /api/reservations/:id/checkin`
+  ```typescript
+  {
+    actual_checkin: string,      // ISO datetime
+    num_people: number,          // required if not set
+    guests?: Array<{ nic_passport?: string, guest_name?: string }>,
+    payment?: { amount: number, method: PaymentMethod, reference?: string }
+  }
+  ```
+  **Logic:**
+  - If `actual_checkin < scheduled_checkin - grace_period_checkin_minutes` → add `early_checkin_fee` to total
+  - If `num_people > room.capacity` → add `(num_people - capacity) * extra_person_charge` to total
+  - Recalculate `total_amount`, update `paid_amount` if payment provided
+
+- `POST /api/reservations/:id/checkout`
+  ```typescript
+  {
+    actual_checkout: string,     // ISO datetime
+    payment?: { amount: number, method: PaymentMethod, reference?: string }
+  }
+  ```
+  **Logic:**
+  - If `actual_checkout > scheduled_checkout + grace_period_checkout_minutes` → add `late_checkout_fee`
+  - **Validation:** `balance` MUST be `<= 0` after this payment. Reject if balance remains positive.
+  - Update status to `checked_out`
+
+- `POST /api/reservations/:id/payment` — Add payment at any stage
+
+- `GET /api/reservations` — List/search reservations (filter by status, date range, room, hotel)
+- `GET /api/reservations/:id` — Full detail with payments, guests
+
+#### Admin Routes
+- CRUD for `room_categories`, `rooms`, `package_types`, `users`
+- Super admin: access to all hotels; hotel admin: own hotel only
+
+#### Reports Routes `GET /api/reports/`
+- `GET /api/reports/sales` — params: `hotel_id`, `date_from`, `date_to`, `group_by` (day/week/month)
+- `GET /api/reports/occupancy` — occupancy rate per room/category
+- `GET /api/reports/payments` — revenue by payment method
+- `GET /api/reports/reservations-summary` — counts by status
+- `GET /api/reports/top-rooms` — most booked rooms
+
+---
+
+### FRONTEND — React + TypeScript
+
+#### Routing Structure
+```
+/login
+/
+  ├── [hotel-slug]/               # context-aware hotel layout
+  │   ├── dashboard               # summary cards: today's arrivals, departures, occupancy
+  │   ├── reservations
+  │   │   ├── new                 # multi-step create reservation
+  │   │   ├── [id]               # reservation detail
+  │   │   └── [id]/checkin       # check-in flow
+  │   │   └── [id]/checkout      # check-out flow
+  │   ├── rooms                   # room management
+  │   ├── reports                 # reports (purchasing_manager + admin + super_admin)
+  │   └── settings               # hotel settings, categories, packages
+  └── admin
+      ├── hotels                  # super admin: manage all hotels
+      └── users                   # super admin: manage all users
+```
+
+#### Authentication & Access Control
+
+```typescript
+// Role permissions matrix
+const permissions = {
+  super_admin:          ['*'],                                    // all hotels, all actions
+  admin:                ['reservations.*', 'rooms.*', 'reports.*', 'settings.*', 'users.hotel'],
+  front_office:         ['reservations.*', 'rooms.view'],
+  purchasing_manager:   ['reports.*', 'reservations.view'],
+}
+```
+
+Store JWT in memory (not localStorage). Use refresh token in httpOnly cookie. Implement auto-refresh with Axios interceptor.
+
+#### Page: Create Reservation (Multi-Step Wizard)
+
+**Step 1 — Guest Details**
+- Customer Name (required)
+- Phone Number (required)
+- NIC / Passport Number (required)
+- Number of People (optional)
+
+**Step 2 — Dates & Package**
+- Check-in Date + Time picker
+- Check-out Date + Time picker
+- **Live duration display:** "3 hours 45 minutes"
+- Auto-suggest matching package types based on duration
+- Allow selecting package + quantity (e.g., 2× Short Time)
+- Show price preview
+
+**Step 3 — Room Selection**
+- Call availability API with selected dates + package
+- Show available rooms grouped by category
+- Each room card: room number, floor, capacity, price
+- Highlight categories, show "unavailable" rooms as disabled/greyed
+
+**Step 4 — Payment (Optional)**
+- Toggle: "Pay now" or "Pay later"
+- If paying: amount field, payment method selector (Cash / Card / Bank Transfer / Online / Other), optional reference number
+- Show booking summary: base price, estimated fees note
+
+**Step 5 — Confirmation**
+- Summary of all details
+- "Confirm Reservation" button → POST to API → show reservation number
+
+#### Page: Check-In Flow
+
+Pre-filled from reservation. User inputs:
+- Actual check-in date & time (default: now)
+- Number of people (if not set previously)
+- Guest NIC/Passport entries (one per person, all optional)
+- **Fee alerts:** If early check-in detected → show yellow banner: "Early check-in fee of LKR X will be applied"
+- If extra guests over capacity → show banner: "X extra guest(s) — LKR Y surcharge"
+- Payment section (optional partial payment — cannot exceed remaining balance)
+- Show updated total, paid, balance
+
+#### Page: Check-Out Flow
+
+- Actual checkout date & time (default: now)
+- **Late checkout alert** if applicable
+- Updated fee summary
+- **Payment section — REQUIRED to bring balance to 0**
+  - Can use multiple payment methods (add rows)
+  - Validation: sum of new payments + existing paid_amount must equal total_amount
+  - Show: Total | Already Paid | Remaining | This Payment
+- Confirm checkout button
+
+#### Component: Payment Panel (Reusable)
+
+Used in Reservation creation, Check-in, Check-out:
+```typescript
+interface PaymentPanelProps {
+  totalAmount: number;
+  paidAmount: number;
+  stage: 'reservation' | 'checkin' | 'checkout';
+  requireFullPayment: boolean;   // true at checkout
+  onPaymentsChange: (payments: PaymentEntry[]) => void;
+}
+```
+- Add/remove payment rows
+- Each row: amount + method + optional reference
+- Running total validation
+
+#### Page: Reports (Accounts / Purchasing Manager View)
+
+**Filters bar:** Hotel selector (super_admin), Date From, Date To, Group By (Day/Week/Month)
+
+**Report Tabs:**
+1. **Sales Summary** — Total revenue, by category, by package type; line/bar chart (use Recharts)
+2. **Occupancy** — Table: room vs. date heatmap or bar chart of occupancy %
+3. **Payment Methods** — Pie chart: cash vs. card vs. other
+4. **Reservation Status** — Donut: reserved / checked-in / checked-out / cancelled / no-show
+5. **Top Rooms** — Bar chart: most booked rooms
+
+All reports should have an **Export CSV** button.
+
+#### Dashboard Page
+
+Four stat cards:
+- Today's Expected Arrivals (reserved, scheduled today)
+- Currently Checked In
+- Today's Expected Departures
+- Available Rooms
+
+Below: Table of today's arrivals and departures with quick-action buttons (Check In / Check Out).
+
+#### Admin: Room Management
+
+Table of rooms with columns: Room #, Floor, Category, Capacity, Grace (in/out), Early Checkin Fee, Late Checkout Fee, Extra Person Charge, Status.
+
+Inline edit or modal form. Admin can also:
+- Manage room categories (name, base price, active toggle)
+- Manage package types (name, min/max hours, price/multiplier, active toggle)
+
+---
+
+### BUSINESS LOGIC — DETAILED RULES
+
+#### Package Auto-Detection
+```typescript
+function suggestPackages(checkinDt: Date, checkoutDt: Date, packages: PackageType[]): PackageType[] {
+  const durationHours = (checkoutDt.getTime() - checkinDt.getTime()) / (1000 * 60 * 60);
+  return packages.filter(p =>
+    (p.min_hours === null || durationHours >= p.min_hours) &&
+    (p.max_hours === null || durationHours <= p.max_hours)
+  );
+}
+```
+
+#### Package Stacking
+When `package_quantity > 1`, total covered duration = `package.max_hours * quantity`. Price = `package_price * quantity`. Display: "2× Short Time (8h total)".
+
+#### Room Availability Query (MySQL)
+```sql
+SELECT r.* FROM rooms r
+WHERE r.hotel_id = ?
+  AND r.is_active = TRUE
+  AND r.id NOT IN (
+    SELECT res.room_id FROM reservations res
+    WHERE res.hotel_id = ?
+      AND res.status NOT IN ('cancelled', 'no_show', 'checked_out')
+      AND res.scheduled_checkin < ?   -- requested checkout
+      AND res.scheduled_checkout > ?  -- requested checkin
+  )
+```
+
+#### Early Check-In Fee
+```typescript
+const gracedCheckin = new Date(reservation.scheduled_checkin);
+gracedCheckin.setMinutes(gracedCheckin.getMinutes() - room.grace_period_checkin_minutes);
+if (actualCheckin < gracedCheckin) {
+  applyEarlyCheckinFee(room.early_checkin_fee);
+}
+```
+
+#### Late Check-Out Fee
+```typescript
+const gracedCheckout = new Date(reservation.scheduled_checkout);
+gracedCheckout.setMinutes(gracedCheckout.getMinutes() + room.grace_period_checkout_minutes);
+if (actualCheckout > gracedCheckout) {
+  applyLateCheckoutFee(room.late_checkout_fee);
+}
+```
+
+#### Balance Enforcement at Checkout
+```typescript
+const newPaid = existingPaid + sumOfNewPayments;
+if (newPaid < reservation.total_amount) {
+  throw new ValidationError("Balance must be zero at checkout. Remaining: " + (total - newPaid));
+}
+```
+
+#### Partial Payments at Reservation / Check-In
+Allowed but `paid_amount` may remain < `total_amount`. System tracks balance live.
+
+---
+
+### UI/UX REQUIREMENTS
+
+- **Mobile-first design.** Sidebar collapses to bottom tab bar or hamburger on mobile.
+- **Color scheme:** Elegant hotel brand feel — deep navy (`#0F1F3D`) with gold accents (`#C9A84C`), white surfaces. Dark sidebar, light content area.
+- **Font:** Use Google Fonts — `Playfair Display` for headings, `DM Sans` for body.
+- **Forms:** React Hook Form + Zod schemas. Show inline validation errors. Disable submit while loading.
+- **Date/Time pickers:** Use a reliable library (e.g., `react-datepicker` or native `<input type="datetime-local">`).
+- **Tables:** Sortable, filterable, paginated (server-side). Mobile: collapse to cards.
+- **Alerts/Toasts:** Use a toast notification system (e.g., `react-hot-toast`) for success/error feedback.
+- **Loading states:** Skeleton loaders on tables and dashboards. Spinner on form submissions.
+- **Modals:** Used for payment entry, quick confirmations. Trap focus for accessibility.
+- **Hotel switcher:** Super admin sees a hotel selector in the top nav to switch context.
+
+---
+
+### SECURITY REQUIREMENTS
+
+- JWT access tokens expire in 15 minutes; refresh tokens in 7 days (httpOnly cookie)
+- All API routes protected by `authenticateToken` middleware
+- Hotel-scoped data: every query must filter by `hotel_id` derived from JWT (not user input), except super admin
+- Input validation on all endpoints via Zod schemas
+- Parameterized queries only — no raw string concatenation in SQL
+- Rate limiting on `/api/auth/login` (max 10 attempts per 15 min per IP)
+- Audit logging for all create/update/delete actions
+
+---
+
+### SEED DATA
+
+Seed the database with:
+- 3 hotels (Beverly Hills, Beverly Beach, Beverly Suites)
+- 1 super admin user (`superadmin@beverly.com` / `Admin@1234`)
+- Per hotel: 1 admin, 1 front_office, 1 purchasing_manager user
+- Per hotel: 4 room categories (Standard, Deluxe, Entertainment, Fish Therapy)
+- Per hotel: 10 rooms (mix of categories, varied capacity 1–4)
+- Per hotel: 3 package types: Short Time (≤4h), Half Day (4–12h), Full Day (>12h)
+
+---
+
+### DELIVERABLES CHECKLIST
+
+- [ ] Full MySQL schema with migrations and seed script
+- [ ] Express API with all routes, middleware, validation
+- [ ] React frontend with all pages and flows
+- [ ] Role-based access fully enforced on frontend and backend
+- [ ] Create Reservation wizard (5 steps)
+- [ ] Check-In flow with fee calculation
+- [ ] Check-Out flow with balance enforcement
+- [ ] Multi-method payment panel (reusable)
+- [ ] Reports module with charts + CSV export
+- [ ] Room & package admin management
+- [ ] Super admin multi-hotel management
+- [ ] Mobile responsive on all screens
+- [ ] `.env.example` for all environment variables
+- [ ] `README.md` with setup instructions
+
+---
+
+This prompt covers the complete specification. Hand it to your development team or use it as your AI coding prompt verbatim. Every edge case — grace periods, stacking packages, partial payments, balance enforcement, role scoping — is explicitly defined so the system can be built without ambiguity.

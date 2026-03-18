@@ -1,0 +1,89 @@
+src/api/axios.ts(1,19): error TS2307: Cannot find module 'axios' or its corresponding type declarations.
+src/api/axios.ts(9,4): error TS7006: Parameter 'response' implicitly has an 'any' type.
+src/api/axios.ts(10,10): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/App.tsx(1,41): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/App.tsx(2,25): error TS2307: Cannot find module 'react-hot-toast' or its corresponding type declarations.
+src/App.tsx(11,1): error TS6133: 'CheckInPage' is declared but its value is never read.
+src/components/layout/AppShell.tsx(1,18): error TS6133: 'Navigate' is declared but its value is never read.
+src/components/layout/AppShell.tsx(1,34): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/components/layout/Sidebar.tsx(1,25): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/components/layout/Sidebar.tsx(3,97): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/components/layout/Sidebar.tsx(71,21): error TS7031: Binding element 'isActive' implicitly has an 'any' type.
+src/components/PaymentPanel.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/PaymentPanel.tsx(2,30): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/components/PaymentPanel.tsx(3,10): error TS2305: Module '"../types"' has no exported member 'PaymentMethod'.
+src/components/ProtectedRoute.tsx(1,34): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/components/RoleRoute.tsx(1,34): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/components/RoleRoute.tsx(3,10): error TS2305: Module '"../types"' has no exported member 'UserRole'.
+src/context/AuthContext.tsx(2,10): error TS2305: Module '"../types"' has no exported member 'User'.
+src/context/AuthContext.tsx(2,16): error TS2305: Module '"../types"' has no exported member 'UserRole'.
+src/context/AuthContext.tsx(23,14): error TS7006: Parameter 'res' implicitly has an 'any' type.
+src/main.tsx(3,31): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/main.tsx(4,50): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/admin/HotelsPage.tsx(1,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/admin/HotelsPage.tsx(3,41): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/admin/HotelsPage.tsx(4,22): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/admin/UsersPage.tsx(1,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/admin/UsersPage.tsx(5,44): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/dashboard/DashboardPage.tsx(3,51): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/dashboard/DashboardPage.tsx(7,9): error TS6133: 'activeHotelId' is declared but its value is never read.
+src/pages/LoginPage.tsx(2,25): error TS2307: Cannot find module 'react-hook-form' or its corresponding type declarations.
+src/pages/LoginPage.tsx(3,29): error TS2307: Cannot find module '@hookform/resolvers/zod' or its corresponding type declarations.
+src/pages/LoginPage.tsx(7,19): error TS2307: Cannot find module 'react-hot-toast' or its corresponding type declarations.
+src/pages/LoginPage.tsx(8,29): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/reports/ReportsPage.tsx(2,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/reports/ReportsPage.tsx(7,94): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/reports/ReportsPage.tsx(8,19): error TS2307: Cannot find module 'react-hot-toast' or its corresponding type declarations.
+src/pages/reports/ReportsPage.tsx(49,14): error TS7006: Parameter 'response' implicitly has an 'any' type.
+src/pages/reports/ReportsPage.tsx(59,15): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/pages/reports/ReportsPage.tsx(76,55): error TS2322: Type '(val: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(val: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'val' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/pages/reports/ReportsPage.tsx(92,74): error TS2322: Type '(val: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(val: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'val' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/pages/reports/ReportsPage.tsx(105,173): error TS18048: 'name' is possibly 'undefined'.
+src/pages/reports/ReportsPage.tsx(105,214): error TS18048: 'percent' is possibly 'undefined'.
+src/pages/reports/ReportsPage.tsx(108,27): error TS2322: Type '(val: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(val: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'val' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/pages/reports/ReportsPage.tsx(120,177): error TS18048: 'name' is possibly 'undefined'.
+src/pages/reports/ReportsPage.tsx(123,27): error TS2322: Type '(val: number) => [number, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(val: number) => [number, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'val' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/pages/reservations/CheckInPage.tsx(2,40): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/reservations/CheckInPage.tsx(3,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/reservations/CheckInPage.tsx(5,19): error TS2307: Cannot find module 'react-hot-toast' or its corresponding type declarations.
+src/pages/reservations/CheckInPage.tsx(8,72): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/reservations/CheckInPage.tsx(9,22): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/reservations/CheckOutPage.tsx(2,40): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/reservations/CheckOutPage.tsx(3,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/reservations/CheckOutPage.tsx(5,19): error TS2307: Cannot find module 'react-hot-toast' or its corresponding type declarations.
+src/pages/reservations/CheckOutPage.tsx(8,59): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/reservations/CheckOutPage.tsx(9,22): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/reservations/NewReservationPage.tsx(1,20): error TS6133: 'useMemo' is declared but its value is never read.
+src/pages/reservations/NewReservationPage.tsx(2,29): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/reservations/NewReservationPage.tsx(3,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/reservations/NewReservationPage.tsx(4,19): error TS2307: Cannot find module 'react-hot-toast' or its corresponding type declarations.
+src/pages/reservations/NewReservationPage.tsx(7,24): error TS1484: 'PaymentEntry' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/reservations/NewReservationPage.tsx(8,50): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/reservations/NewReservationPage.tsx(80,13): error TS6133: 'res' is declared but its value is never read.
+src/pages/reservations/ReservationDetailPage.tsx(1,33): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/reservations/ReservationDetailPage.tsx(2,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/reservations/ReservationDetailPage.tsx(4,68): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/reservations/ReservationsListPage.tsx(2,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/reservations/ReservationsListPage.tsx(5,33): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/pages/reservations/ReservationsListPage.tsx(6,40): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/rooms/RoomsPage.tsx(1,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/rooms/RoomsPage.tsx(4,34): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/pages/settings/SettingsPage.tsx(2,26): error TS2307: Cannot find module '@tanstack/react-query' or its corresponding type declarations.
+src/pages/settings/SettingsPage.tsx(5,47): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/types/index.ts(1,15): error TS2307: Cannot find module '@beverly-pms/shared' or its corresponding type declarations.

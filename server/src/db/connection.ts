@@ -1,0 +1,36 @@
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Support running this file directly or from the app
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+const config = {
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT || '3306'),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'beverly_pms',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+};
+
+export const pool = mysql.createPool(config);
+
+/**
+ * Execute a query with type casting
+ */
+export async function query<T>(sql: string, params?: any[]): Promise<T> {
+  const [results] = await pool.query(sql, params);
+  return results as T;
+}
+
+/**
+ * Get a single row
+ */
+export async function queryOne<T>(sql: string, params?: any[]): Promise<T | null> {
+  const [results] = await pool.query(sql, params);
+  const rows = results as any[];
+  return rows.length > 0 ? (rows[0] as T) : null;
+}
