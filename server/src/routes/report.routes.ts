@@ -12,6 +12,7 @@ router.get('/sales', getSalesSummary);
 router.get('/occupancy', getOccupancy);
 router.get('/payments', getPayments);
 router.get('/reservations-summary', getReservationSummary);
+router.get('/status', getReservationSummary);
 router.get('/top-rooms', getTopRooms);
 
 export default router;

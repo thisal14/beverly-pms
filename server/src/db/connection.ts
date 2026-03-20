@@ -1,6 +1,9 @@
 import mysql from 'mysql2/promise';
+import mysqlCallback from 'mysql2';
 import dotenv from 'dotenv';
 import path from 'path';
+import { Kysely, MysqlDialect } from 'kysely';
+import { Database } from './db';
 
 // Support running this file directly or from the app
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -16,10 +19,23 @@ const config = {
   queueLimit: 0,
 };
 
+// Main promise-based pool used by the rest of the app
 export const pool = mysql.createPool(config);
 
+// Dedicated non-promise pool for Kysely compatibility
+const kyselyPool = mysqlCallback.createPool(config);
+
 /**
- * Execute a query with type casting
+ * Kysely instance for type-safe queries
+ */
+export const db = new Kysely<Database>({
+  dialect: new MysqlDialect({
+    pool: kyselyPool
+  })
+});
+
+/**
+ * Execute a query with type casting (Legacy raw SQL support)
  */
 export async function query<T>(sql: string, params?: any[]): Promise<T> {
   const [results] = await pool.query(sql, params);
@@ -27,7 +43,7 @@ export async function query<T>(sql: string, params?: any[]): Promise<T> {
 }
 
 /**
- * Get a single row
+ * Get a single row (Legacy raw SQL support)
  */
 export async function queryOne<T>(sql: string, params?: any[]): Promise<T | null> {
   const [results] = await pool.query(sql, params);

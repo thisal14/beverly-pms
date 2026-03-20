@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { query } from '../db/connection';
+import { db } from '../db/connection';
+import { sql } from 'kysely';
 import { UserRole } from '@beverly-pms/shared';
 
 const getReportContext = (req: Request) => {
@@ -7,7 +8,7 @@ const getReportContext = (req: Request) => {
     ? parseInt(req.query.hotel_id as string) 
     : req.user!.hotel_id;
   return { 
-    hotelId, 
+    hotelId: hotelId as number, 
     from: (req.query.date_from as string) || '2000-01-01', 
     to: (req.query.date_to as string) || '2099-12-31' 
   };
@@ -16,14 +17,20 @@ const getReportContext = (req: Request) => {
 export const getSalesSummary = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { hotelId, from, to } = getReportContext(req);
-    const sql = `
-      SELECT DATE(actual_checkout) as period, SUM(total_amount) as revenue
-      FROM reservations 
-      WHERE hotel_id = ? AND status = 'checked_out' AND actual_checkout BETWEEN ? AND ?
-      GROUP BY DATE(actual_checkout)
-      ORDER BY period ASC
-    `;
-    const data = await query(sql, [hotelId, from + ' 00:00:00', to + ' 23:59:59']);
+    const data = await db
+      .selectFrom('reservations')
+      .select([
+        sql<string>`DATE(actual_checkout)`.as('period'),
+        sql<number>`SUM(total_amount)`.as('revenue')
+      ])
+      .where('hotel_id', '=', hotelId)
+      .where('status', '=', 'checked_out')
+      .where('actual_checkout', '>=', from + ' 00:00:00')
+      .where('actual_checkout', '<=', to + ' 23:59:59')
+      .groupBy(sql`DATE(actual_checkout)`)
+      .orderBy('period', 'asc')
+      .execute();
+
     res.json({ success: true, data });
   } catch (error) { next(error); }
 };
@@ -31,22 +38,27 @@ export const getSalesSummary = async (req: Request, res: Response, next: NextFun
 export const getOccupancy = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { hotelId, from, to } = getReportContext(req);
-    // Calculate days in the range to compute occupancy rate
     const daysDiff = Math.max(1, (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 3600 * 24) + 1);
     
-    const sql = `
-      SELECT r.room_number, COUNT(rr.id) as bookings,
-             (COUNT(rr.id) / ? * 100) as occupancy_rate
-      FROM rooms r
-      LEFT JOIN reservation_rooms rr ON r.id = rr.room_id
-      LEFT JOIN reservations res ON rr.reservation_id = res.id 
-         AND res.status IN ('checked_in', 'checked_out')
-         AND res.scheduled_checkin BETWEEN ? AND ?
-      WHERE r.hotel_id = ?
-      GROUP BY r.id
-      ORDER BY r.room_number ASC
-    `;
-    const data = await query(sql, [daysDiff, from + ' 00:00:00', to + ' 23:59:59', hotelId]);
+    const data = await db
+      .selectFrom('rooms as r')
+      .leftJoin('reservation_rooms as rr', 'r.id', 'rr.room_id')
+      .leftJoin('reservations as res', (join) => join
+        .onRef('rr.reservation_id', '=', 'res.id')
+        .on('res.status', 'in', ['checked_in', 'checked_out'])
+        .on('res.scheduled_checkin', '>=', from + ' 00:00:00')
+        .on('res.scheduled_checkin', '<=', to + ' 23:59:59')
+      )
+      .select([
+        'r.room_number',
+        sql<number>`COUNT(rr.id)`.as('bookings'),
+        sql<number>`COUNT(rr.id) / ${sql.val(daysDiff)} * 100`.as('occupancy_rate')
+      ])
+      .where('r.hotel_id', '=', hotelId)
+      .groupBy('r.id')
+      .orderBy('r.room_number', 'asc')
+      .execute();
+
     res.json({ success: true, data });
   } catch (error) { next(error); }
 };
@@ -54,14 +66,19 @@ export const getOccupancy = async (req: Request, res: Response, next: NextFuncti
 export const getPayments = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { hotelId, from, to } = getReportContext(req);
-    const sql = `
-      SELECT p.payment_method, SUM(p.amount) as total
-      FROM payments p
-      JOIN reservations r ON p.reservation_id = r.id
-      WHERE r.hotel_id = ? AND p.created_at BETWEEN ? AND ?
-      GROUP BY p.payment_method
-    `;
-    const data = await query(sql, [hotelId, from + ' 00:00:00', to + ' 23:59:59']);
+    const data = await db
+      .selectFrom('payments as p')
+      .innerJoin('reservations as r', 'p.reservation_id', 'r.id')
+      .select([
+        'p.payment_method',
+        sql<number>`SUM(p.amount)`.as('total')
+      ])
+      .where('r.hotel_id', '=', hotelId)
+      .where('p.created_at', '>=', from + ' 00:00:00')
+      .where('p.created_at', '<=', to + ' 23:59:59')
+      .groupBy('p.payment_method')
+      .execute();
+
     res.json({ success: true, data });
   } catch (error) { next(error); }
 };
@@ -69,13 +86,18 @@ export const getPayments = async (req: Request, res: Response, next: NextFunctio
 export const getReservationSummary = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { hotelId, from, to } = getReportContext(req);
-    const sql = `
-      SELECT status, COUNT(*) as count
-      FROM reservations
-      WHERE hotel_id = ? AND created_at BETWEEN ? AND ?
-      GROUP BY status
-    `;
-    const data = await query(sql, [hotelId, from + ' 00:00:00', to + ' 23:59:59']);
+    const data = await db
+      .selectFrom('reservations')
+      .select([
+        'status',
+        sql<number>`COUNT(*)`.as('count')
+      ])
+      .where('hotel_id', '=', hotelId)
+      .where('created_at', '>=', from + ' 00:00:00')
+      .where('created_at', '<=', to + ' 23:59:59')
+      .groupBy('status')
+      .execute();
+
     res.json({ success: true, data });
   } catch (error) { next(error); }
 };
@@ -83,16 +105,22 @@ export const getReservationSummary = async (req: Request, res: Response, next: N
 export const getTopRooms = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { hotelId, from, to } = getReportContext(req);
-    const sql = `
-      SELECT r.room_number, COUNT(rr.id) as booking_count
-      FROM rooms r
-      JOIN reservation_rooms rr ON r.id = rr.room_id
-      JOIN reservations res ON rr.reservation_id = res.id
-      WHERE r.hotel_id = ? AND res.created_at BETWEEN ? AND ?
-      GROUP BY r.id
-      ORDER BY booking_count DESC LIMIT 10
-    `;
-    const data = await query(sql, [hotelId, from + ' 00:00:00', to + ' 23:59:59']);
+    const data = await db
+      .selectFrom('rooms as r')
+      .innerJoin('reservation_rooms as rr', 'r.id', 'rr.room_id')
+      .innerJoin('reservations as res', 'rr.reservation_id', 'res.id')
+      .select([
+        'r.room_number',
+        sql<number>`COUNT(rr.id)`.as('booking_count')
+      ])
+      .where('r.hotel_id', '=', hotelId)
+      .where('res.created_at', '>=', from + ' 00:00:00')
+      .where('res.created_at', '<=', to + ' 23:59:59')
+      .groupBy('r.id')
+      .orderBy('booking_count', 'desc')
+      .limit(10)
+      .execute();
+
     res.json({ success: true, data });
   } catch (error) { next(error); }
 };
