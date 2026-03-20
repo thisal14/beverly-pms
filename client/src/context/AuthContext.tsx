@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { User, UserRole } from '../types';
-import { setApiAuthToken } from '../api/axios';
+import type { User } from '../types';
 import api from '../api/axios';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (token: string, user: User) => void;
+  login: (user: User) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -21,32 +20,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Auto-login flow using httpOnly refresh token
     api.post('/auth/refresh')
       .then((res: any) => {
-        setApiAuthToken(res.data.accessToken);
-        // Minimal user info from token payload. 
-        // In a real app we might GET /api/users/me here.
-        try {
-          const payload = JSON.parse(atob(res.data.accessToken.split('.')[1]));
-          setUser({
-             id: payload.id, 
-             role: payload.role as UserRole, 
-             hotel_id: payload.hotel_id, 
-             name: 'Current User', 
-             email: '', 
-             is_active: true, 
-             created_at: ''
-          } as User);
-        } catch (e) {}
+        // The backend now returns { success: true, user: {...} } 
+        // and sets the accessToken HttpOnly cookie
+        if (res.data.user) {
+           setUser(res.data.user);
+        }
       })
       .catch(() => {
-        setApiAuthToken(null);
+        setUser(null);
       })
       .finally(() => {
         setIsLoading(false);
       });
   }, []);
 
-  const login = (token: string, userData: User) => {
-    setApiAuthToken(token);
+  const login = (userData: User) => {
     setUser(userData);
   };
 
@@ -54,7 +42,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.post('/auth/logout');
     } catch (e) {}
-    setApiAuthToken(null);
     setUser(null);
   };
 

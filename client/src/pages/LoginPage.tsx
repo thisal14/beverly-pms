@@ -27,7 +27,10 @@ export default function LoginPage() {
     try {
       setLoading(true);
       const res = await api.post('/auth/login', data);
-      login(res.data.accessToken, res.data.user);
+      
+      // We only pass the user data since the token is stored in an HTTP-Only cookie now
+      login(res.data.user);
+      
       toast.success('Login successful');
       
       if (res.data.user.role === 'super_admin') {

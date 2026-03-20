@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: 'http://localhost:3000/api',
-  withCredentials: true
+  withCredentials: true // Extremely important: this ensures cookies are sent with every request
 });
 
 api.interceptors.response.use(
@@ -17,12 +17,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const { data } = await axios.post('http://localhost:3000/api/auth/refresh', {}, { withCredentials: true });
-        originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
-        api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+        // Hitting refresh will yield a new accessToken cookie via Set-Cookie headers
+        await axios.post('http://localhost:3000/api/auth/refresh', {}, { withCredentials: true });
+        
+        // Since we are using HTTP-Only cookies, simply retrying the request is enough.
+        // The browser will automatically attach the newly minted access token cookie.
         return api(originalRequest);
       } catch (err) {
-        // If refresh fails, we probably should logout explicitly or redirect
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
@@ -32,13 +33,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-export function setApiAuthToken(token: string | null) {
-  if (token) {
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete api.defaults.headers.common['Authorization'];
-  }
-}
 
 export default api;

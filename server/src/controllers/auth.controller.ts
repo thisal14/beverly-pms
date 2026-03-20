@@ -34,12 +34,22 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
 
+    const isProd = process.env.NODE_ENV === 'production';
+    
     // Set HttpOnly cookie for refresh token
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProd,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    // Set HttpOnly cookie for access token
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000 // 15 minutes
     });
 
     const userResponse = {
@@ -50,7 +60,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       hotel: hotel || undefined
     };
 
-    return res.status(200).json({ success: true, accessToken, user: userResponse });
+    return res.status(200).json({ success: true, user: userResponse });
   } catch (error) {
     next(error);
   }
@@ -72,14 +82,38 @@ export const refresh = async (req: Request, res: Response, next: NextFunction) =
     }
 
     const newAccessToken = signAccessToken(user);
-    return res.status(200).json({ success: true, accessToken: newAccessToken });
+    
+    // Set new HttpOnly cookie for access token
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000 // 15 minutes
+    });
+
+    let hotel: Hotel | null = null;
+    if (user.hotel_id) {
+      hotel = await queryOne<Hotel>(`SELECT id, name, slug FROM hotels WHERE id = ?`, [user.hotel_id]) || null;
+    }
+
+    const userResponse = {
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      hotel_id: user.hotel_id,
+      hotel: hotel || undefined
+    };
+
+    return res.status(200).json({ success: true, user: userResponse });
   } catch (error) {
     res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
     return res.status(401).json({ success: false, message: 'Invalid refresh token' });
   }
 };
 
 export const logout = async (req: Request, res: Response) => {
   res.clearCookie('refreshToken');
+  res.clearCookie('accessToken');
   return res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
