@@ -72,7 +72,7 @@ export default function ReservationsListPage() {
                      <div className="text-xs text-gray-500 mt-0.5">{res.customer_phone}</div>
                   </td>
                   <td className="px-6 py-4">
-                     <div className="text-gray-900 font-medium">Room {res.room_number}</div>
+                     <div className="text-gray-900 font-medium">{res.room_sum}</div>
                      <div className="text-xs text-gray-500 mt-0.5">{res.package_name}</div>
                   </td>
                   <td className="px-6 py-4 text-gray-600">

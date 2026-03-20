@@ -21,15 +21,20 @@ export const checkout = async (req: Request, res: Response, next: NextFunction) 
     await connection.beginTransaction();
 
     const [reservations] = await connection.query<any[]>(
-      `SELECT res.*, r.late_checkout_fee, r.grace_period_checkout_minutes
-       FROM reservations res
-       JOIN rooms r ON res.room_id = r.id
-       WHERE res.id = ? FOR UPDATE`,
+      `SELECT * FROM reservations WHERE id = ? FOR UPDATE`,
       [id]
     );
 
     if (!reservations.length) throw new Error('Reservation not found');
     const resv = reservations[0];
+
+    const [rooms] = await connection.query<any[]>(
+      `SELECT rr.*, r.late_checkout_fee, r.grace_period_checkout_minutes
+       FROM reservation_rooms rr
+       JOIN rooms r ON rr.room_id = r.id
+       WHERE rr.reservation_id = ?`,
+      [id]
+    );
 
     if (resv.status !== 'checked_in') {
       throw new Error(`Cannot check out. Current status: ${resv.status}`);
@@ -37,15 +42,18 @@ export const checkout = async (req: Request, res: Response, next: NextFunction) 
 
     const actualCheckout = new Date(data.actual_checkout);
     const scheduledCheckout = new Date(resv.scheduled_checkout);
-    const gracedCheckout = new Date(scheduledCheckout.getTime());
-    gracedCheckout.setMinutes(gracedCheckout.getMinutes() + resv.grace_period_checkout_minutes);
-
-    let lateFee = 0;
-    if (actualCheckout > gracedCheckout) {
-      lateFee = parseFloat(resv.late_checkout_fee);
+    
+    let totalLateFee = 0;
+    for (const r of rooms) {
+      const gracedCheckout = new Date(scheduledCheckout.getTime());
+      gracedCheckout.setMinutes(gracedCheckout.getMinutes() + r.grace_period_checkout_minutes);
+      
+      if (actualCheckout > gracedCheckout) {
+        totalLateFee += parseFloat(r.late_checkout_fee || 0);
+      }
     }
 
-    const newTotal = parseFloat(resv.base_amount) + parseFloat(resv.early_checkin_fee) + lateFee + parseFloat(resv.extra_person_charge);
+    const newTotal = parseFloat(resv.base_amount) + parseFloat(resv.early_checkin_fee) + totalLateFee + parseFloat(resv.extra_person_charge);
     
     let sumOfNewPayments = 0;
     if (data.payments) {
@@ -71,7 +79,7 @@ export const checkout = async (req: Request, res: Response, next: NextFunction) 
     const formatDateTime = (iso: string) => new Date(iso).toISOString().slice(0, 19).replace('T', ' ');
 
     await connection.query(updateSql, [
-      formatDateTime(data.actual_checkout), lateFee, newTotal, newPaid, id
+      formatDateTime(data.actual_checkout), totalLateFee, newTotal, newPaid, id
     ]);
 
     if (data.payments && data.payments.length > 0) {
@@ -85,7 +93,7 @@ export const checkout = async (req: Request, res: Response, next: NextFunction) 
     }
 
     await connection.commit();
-    await logAudit(req, 'CHECKOUT', 'reservations', id, { status: resv.status }, { status: 'checked_out', lateFee });
+    await logAudit(req, 'CHECKOUT', 'reservations', id, { status: resv.status }, { status: 'checked_out', lateFee: totalLateFee });
 
     res.status(200).json({ success: true, message: 'Checked out successfully' });
   } catch (error) {

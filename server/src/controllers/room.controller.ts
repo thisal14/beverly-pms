@@ -29,7 +29,8 @@ export const getAvailableRooms = async (req: Request, res: Response, next: NextF
         AND r.is_active = TRUE
         AND c.is_active = TRUE
         AND r.id NOT IN (
-          SELECT res.room_id FROM reservations res
+          SELECT rr.room_id FROM reservation_rooms rr
+          JOIN reservations res ON rr.reservation_id = res.id
           WHERE res.hotel_id = ?
             AND res.status NOT IN ('cancelled', 'no_show', 'checked_out')
             AND res.scheduled_checkin < ?

@@ -28,7 +28,8 @@ export default function CheckInPage() {
     queryKey: ['reservation', id],
     queryFn: async () => {
       const data = (await api.get(`/reservations/${id}`)).data.data;
-      setNumPeople(data.num_people);
+      const initialNumPeople = data.reservation_rooms?.reduce((sum: number, rr: any) => sum + rr.num_adults + rr.num_children, 0) || 1;
+      setNumPeople(initialNumPeople);
       setGuests([{ fullName: data.customer_name, nicPassport: data.customer_nic_passport || '' }]);
       return data;
     },
@@ -38,12 +39,12 @@ export default function CheckInPage() {
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading reservation details...</div>;
   if (!res) return null;
 
-  const roomCapacity = res.room?.capacity || 2;
+  const roomCapacity = res.reservation_rooms?.reduce((sum: number, rr: any) => sum + rr.capacity, 0) || 0;
+  const roomNumbers = res.reservation_rooms?.map((rr: any) => rr.room_number).join(', ') || 'N/A';
   const scheduledTime = new Date(res.scheduled_checkin).getTime();
   const actualTime = new Date(actualCheckin).getTime();
-  const gracePeriod = 2 * 60 * 60 * 1000; // 2 hours
 
-  const isEarly = actualTime < (scheduledTime - gracePeriod);
+  const isEarly = actualTime < (scheduledTime - (2 * 60 * 60 * 1000));
   const isExtraGuests = numPeople > roomCapacity;
 
   const handleAddGuest = () => setGuests([...guests, { fullName: '', nicPassport: '' }]);
@@ -61,8 +62,8 @@ export default function CheckInPage() {
       const payload = {
         actual_checkin: utcDate.toISOString(),
         num_people: numPeople,
-        payments: payments,
-        guests: guests.filter(g => g.fullName)
+        payment: payments.length > 0 ? payments[0] : undefined, // Checkin controller expects 'payment' (singular)
+        guests: guests.filter(g => g.fullName).map(g => ({ guest_name: g.fullName, nic_passport: g.nicPassport }))
       };
       await api.post(`/reservations/${id}/checkin`, payload);
       toast.success('Check-in process completed successfully!');
@@ -82,7 +83,7 @@ export default function CheckInPage() {
 
       <div className="border-b border-gray-200 pb-5">
         <h1 className="text-3xl font-serif font-bold text-navy flex items-center gap-3"><UserCheck className="text-gold" size={32} /> Check-In Process</h1>
-        <p className="text-gray-500 mt-2 font-medium">Reservation {res.reservation_number} • Room {res.room?.room_number}</p>
+        <p className="text-gray-500 mt-2 font-medium">Reservation {res.reservation_number} • Rooms {roomNumbers}</p>
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6">
@@ -93,8 +94,8 @@ export default function CheckInPage() {
          </div>
          <div className="flex-1">
            <label className="block text-sm font-bold text-navy mb-2">Total Guests Staying</label>
-           <input type="number" min="1" value={numPeople} onChange={e => setNumPeople(parseInt(e.target.value) || 1)} className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-1 focus:ring-gold outline-none bg-gray-50 font-medium" />
-           <p className="text-xs text-gray-500 mt-2">Room Capacity: <span className="font-bold">{roomCapacity}</span> persons</p>
+           <input type="number" min="1" value={numPeople} onChange={e => setNumPeople(parseInt(e.target.value) || 1)} className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-1 focus:ring-gold focus:border-gold outline-none bg-gray-50 font-medium" />
+           <p className="text-xs text-gray-500 mt-2">Aggregated Capacity: <span className="font-bold">{roomCapacity}</span> persons</p>
          </div>
       </div>
 

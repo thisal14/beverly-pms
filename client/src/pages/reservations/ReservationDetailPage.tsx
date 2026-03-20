@@ -60,6 +60,30 @@ export default function ReservationDetailPage() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+             <div className="p-4 border-b border-gray-100 bg-gray-50/80 font-bold text-navy flex items-center gap-2">
+               Booked Rooms
+             </div>
+             <div className="p-0">
+               <div className="divide-y divide-gray-50">
+                 {res.reservation_rooms?.map((rr: any) => (
+                   <div key={rr.id} className="p-4 flex justify-between items-center hover:bg-gray-50/50 transition">
+                     <div>
+                       <div className="font-bold text-navy">Room {rr.room_number} — {rr.category_name}</div>
+                       <div className="text-xs text-gray-500 mt-1">
+                         {rr.package_name} • {rr.num_adults} Adults, {rr.num_children} Children
+                       </div>
+                     </div>
+                     <div className="text-right">
+                        <div className="font-bold text-gray-900">LKR {parseFloat(rr.base_amount).toLocaleString()}</div>
+                        {parseFloat(rr.extra_person_charge) > 0 && <div className="text-[10px] text-orange-600 font-medium">+ Extra Person Charges</div>}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
              <div className="p-4 border-b border-gray-100 bg-gray-50/80 font-bold text-navy flex items-center gap-2"><Users size={18} className="text-gold" /> Registered Guests</div>
              <div className="p-0">
                {res.guests && res.guests.length > 0 ? (
@@ -82,7 +106,7 @@ export default function ReservationDetailPage() {
               <div className="flex justify-between text-sm"><span className="text-gray-500">Base Amount</span><span className="font-semibold">LKR {parseFloat(res.base_amount || 0).toFixed(2)}</span></div>
               {parseFloat(res.early_checkin_fee) > 0 && <div className="flex justify-between text-sm text-orange-600 font-medium"><span>Early In Fee</span><span>+ LKR {parseFloat(res.early_checkin_fee).toFixed(2)}</span></div>}
               {parseFloat(res.late_checkout_fee) > 0 && <div className="flex justify-between text-sm text-orange-600 font-medium"><span>Late Out Fee</span><span>+ LKR {parseFloat(res.late_checkout_fee).toFixed(2)}</span></div>}
-              {parseFloat(res.extra_person_fee) > 0 && <div className="flex justify-between text-sm text-orange-600 font-medium"><span>Extra Persons</span><span>+ LKR {parseFloat(res.extra_person_fee).toFixed(2)}</span></div>}
+              {parseFloat(res.extra_person_charge) > 0 && <div className="flex justify-between text-sm text-orange-600 font-medium"><span>Extra Persons</span><span>+ LKR {parseFloat(res.extra_person_charge).toFixed(2)}</span></div>}
               <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-lg text-navy"><span>Total</span><span>LKR {parseFloat(res.total_amount).toFixed(2)}</span></div>
               <div className="flex justify-between text-sm text-emerald-600 font-semibold"><span>Paid Amount</span><span>- LKR {parseFloat(res.paid_amount).toFixed(2)}</span></div>
               

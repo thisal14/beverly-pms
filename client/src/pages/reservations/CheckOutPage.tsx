@@ -29,8 +29,8 @@ export default function CheckOutPage() {
   });
 
   if (isLoading) return <div className="p-12 text-center text-gray-400">Loading...</div>;
-  if (!res) return null;
-
+  const roomNumbers = res.reservation_rooms?.map((rr: any) => rr.room_number).join(', ') || 'N/A';
+  
   const scheduledOut = new Date(res.scheduled_checkout).getTime();
   const actualOut = new Date(actualCheckout).getTime();
   const lateGracePeriod = 1 * 60 * 60 * 1000; // 1 hour
@@ -39,7 +39,7 @@ export default function CheckOutPage() {
   
   // Note: Fees will be calculated properly server side, we just preview warning here
   const totalPaid = parseFloat(res.paid_amount);
-  const totalAmount = parseFloat(res.total_amount); // We use the current stored total, backend will adjust line-items when posted.
+  const totalAmount = parseFloat(res.total_amount); 
   const newPaymentsTotal = payments.reduce((sum, p) => sum + p.amount, 0);
   const remainingLocally = totalAmount - totalPaid - newPaymentsTotal;
 
@@ -70,7 +70,7 @@ export default function CheckOutPage() {
         <LogOut className="text-orange-500" size={32} />
         <div>
           <h1 className="text-3xl font-serif font-bold text-navy">Check-Out Process</h1>
-          <p className="text-gray-500 mt-2 font-medium">Reservation {res.reservation_number} • Room {res.room?.room_number}</p>
+          <p className="text-gray-500 mt-2 font-medium">Reservation {res.reservation_number} • Rooms {roomNumbers}</p>
         </div>
       </div>
 

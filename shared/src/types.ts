@@ -60,24 +60,32 @@ export interface PackageType {
   is_active: boolean;
 }
 
+export interface ReservationRoom {
+  id: number;
+  reservation_id: number;
+  room_id: number;
+  package_type_id: number;
+  package_quantity: number;
+  num_adults: number;
+  num_children: number;
+  base_amount: string;
+  extra_person_charge: string;
+  created_at: string;
+
+  room?: Room;
+  package_type?: PackageType;
+}
+
 export interface Reservation {
   id: number;
   hotel_id: number;
   reservation_number: string;
-  room_id: number;
-  package_type_id: number;
-  package_quantity: number;
   customer_name: string;
   customer_phone: string;
   customer_nic_passport: string;
-  num_people: number | null;
   scheduled_checkin: string;
   scheduled_checkout: string;
   status: ReservationStatus;
-  base_amount: string;
-  extra_person_charge: string;
-  early_checkin_fee: string;
-  late_checkout_fee: string;
   total_amount: string;
   paid_amount: string;
   balance: string;
@@ -87,8 +95,8 @@ export interface Reservation {
   created_at: string;
   updated_at: string;
 
-  room?: Room;
-  package_type?: PackageType;
+  room_sum?: string;
+  reservation_rooms?: ReservationRoom[];
   guests?: ReservationGuest[];
   payments?: Payment[];
 }
