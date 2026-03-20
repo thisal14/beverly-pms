@@ -5,18 +5,18 @@ import api from '../../api/axios';
 import { useHotel } from '../../context/HotelContext';
 import { Plus, Edit2, Bed } from 'lucide-react';
 import AddRoomModal from './AddRoomModal';
+import EditRoomModal from './EditRoomModal';
+
 
 
 export default function RoomsPage() {
   const { activeHotelId } = useHotel();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
+  const [editingRoom, setEditingRoom] = useState<any | null>(null);
 
   const { data: rooms, isLoading } = useQuery({
     queryKey: ['rooms', activeHotelId],
     queryFn: async () => {
-      // We join category inside the UI usually, backend might return it if joined. Let's assume the endpoint handles it or we map categories.
-      // For simplicity in mock, assuming it returns `category_name`
       return (await api.get(`/admin/rooms?hotel_id=${activeHotelId}`)).data.data;
     },
     enabled: !!activeHotelId
@@ -35,7 +35,6 @@ export default function RoomsPage() {
         >
           <Plus size={18} /> Add New Room
         </button>
-
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -68,7 +67,12 @@ export default function RoomsPage() {
                       </span>
                    </td>
                    <td className="px-6 py-4 text-right">
-                      <button className="text-gray-400 hover:text-navy hover:bg-gray-100 p-2 rounded-lg transition border border-transparent hover:border-gray-200"><Edit2 size={16} /></button>
+                      <button 
+                        onClick={() => setEditingRoom(r)}
+                        className="text-gray-400 hover:text-navy hover:bg-gray-100 p-2 rounded-lg transition border border-transparent hover:border-gray-200"
+                      >
+                        <Edit2 size={16} />
+                      </button>
                    </td>
                  </tr>
                ))}
@@ -83,7 +87,12 @@ export default function RoomsPage() {
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
       />
+      <EditRoomModal 
+        room={editingRoom} 
+        onClose={() => setEditingRoom(null)} 
+      />
     </div>
   );
 }
+
 

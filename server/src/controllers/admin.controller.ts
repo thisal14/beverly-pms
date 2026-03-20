@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { query } from '../db/connection';
+import { query, queryOne } from '../db/connection';
 import { logAudit } from '../utils/audit.utils';
 import bcrypt from 'bcrypt';
 import { UserRole } from '@beverly-pms/shared';
@@ -39,14 +39,43 @@ export const getRooms = async (req: Request, res: Response, next: NextFunction) 
 
 export const createRoom = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { room_category_id, room_number, floor, capacity, extra_person_charge, early_checkin_fee, late_checkout_fee } = req.body;
+    const { room_category_id, room_number, floor, capacity, status, extra_person_charge, early_checkin_fee, late_checkout_fee } = req.body;
     const result = await query<any>(
-      `INSERT INTO rooms (hotel_id, room_category_id, room_number, floor, capacity, extra_person_charge, early_checkin_fee, late_checkout_fee) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [getHotelId(req), room_category_id, room_number, floor, capacity, extra_person_charge, early_checkin_fee, late_checkout_fee]
+      `INSERT INTO rooms (hotel_id, room_category_id, room_number, floor, capacity, status, extra_person_charge, early_checkin_fee, late_checkout_fee) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [getHotelId(req), room_category_id, room_number, floor, capacity, status || 'available', extra_person_charge, early_checkin_fee, late_checkout_fee]
     );
     await logAudit(req, 'CREATE_ROOM', 'rooms', result.insertId, null, req.body);
     res.json({ success: true, message: 'Room created', data: { id: result.insertId } });
+  } catch (error) { next(error); }
+};
+
+export const updateRoom = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const hotelId = getHotelId(req);
+    const { room_category_id, room_number, floor, capacity, status, extra_person_charge, early_checkin_fee, late_checkout_fee } = req.body;
+    
+    // Check current state for audit
+    const current = await queryOne<any>(`SELECT * FROM rooms WHERE id = ? AND hotel_id = ?`, [id, hotelId]);
+    if (!current) return res.status(404).json({ success: false, message: 'Room not found' });
+
+    await query(
+      `UPDATE rooms SET 
+        room_category_id = ?, 
+        room_number = ?, 
+        floor = ?, 
+        capacity = ?, 
+        status = ?, 
+        extra_person_charge = ?, 
+        early_checkin_fee = ?, 
+        late_checkout_fee = ?
+       WHERE id = ? AND hotel_id = ?`,
+      [room_category_id, room_number, floor, capacity, status, extra_person_charge, early_checkin_fee, late_checkout_fee, id, hotelId]
+    );
+
+    await logAudit(req, 'UPDATE_ROOM', 'rooms', parseInt(id), current, req.body);
+    res.json({ success: true, message: 'Room updated' });
   } catch (error) { next(error); }
 };
 

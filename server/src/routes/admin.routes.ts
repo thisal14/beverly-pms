@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getCategories, createCategory, getRooms, createRoom, getPackages, createPackage, getUsers, createUser } from '../controllers/admin.controller';
+import { getCategories, createCategory, getRooms, createRoom, updateRoom, getPackages, createPackage, getUsers, createUser } from '../controllers/admin.controller';
 import { authenticateToken, requireRole } from '../middleware/auth.middleware';
 import { UserRole } from '@beverly-pms/shared';
 
@@ -14,6 +14,7 @@ router.post('/categories', createCategory);
 
 router.get('/rooms', getRooms);
 router.post('/rooms', createRoom);
+router.put('/rooms/:id', updateRoom);
 
 router.get('/packages', getPackages);
 router.post('/packages', createPackage);

@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Save, Box, Layers, Hash, Users, DollarSign, Clock } from 'lucide-react';
+import { X, Save, Box, Layers, Hash, Users, DollarSign, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../../api/axios';
 import { useHotel } from '../../context/HotelContext';
 import toast from 'react-hot-toast';
 
-interface AddRoomModalProps {
-  isOpen: boolean;
+interface EditRoomModalProps {
+  room: any | null;
   onClose: () => void;
 }
 
-export default function AddRoomModal({ isOpen, onClose }: AddRoomModalProps) {
+export default function EditRoomModal({ room, onClose }: EditRoomModalProps) {
   const { activeHotelId } = useHotel();
   const queryClient = useQueryClient();
   
@@ -25,18 +25,33 @@ export default function AddRoomModal({ isOpen, onClose }: AddRoomModalProps) {
     late_checkout_fee: 0
   });
 
+  useEffect(() => {
+    if (room) {
+      setFormData({
+        room_number: room.room_number || '',
+        room_category_id: room.room_category_id?.toString() || '',
+        floor: room.floor?.toString() || '',
+        capacity: room.capacity || 2,
+        status: room.status || 'available',
+        extra_person_charge: parseFloat(room.extra_person_charge) || 0,
+        early_checkin_fee: parseFloat(room.early_checkin_fee) || 0,
+        late_checkout_fee: parseFloat(room.late_checkout_fee) || 0
+      });
+    }
+  }, [room]);
+
   // Fetch categories for the dropdown
   const { data: categories } = useQuery({
     queryKey: ['categories', activeHotelId],
     queryFn: async () => (await api.get(`/admin/categories?hotel_id=${activeHotelId}`)).data.data,
-    enabled: isOpen && !!activeHotelId
+    enabled: !!room && !!activeHotelId
   });
 
   const mutation = useMutation({
-    mutationFn: (newRoom: any) => api.post('/admin/rooms', { ...newRoom, hotel_id: activeHotelId }),
+    mutationFn: (updatedRoom: any) => api.put(`/admin/rooms/${room.id}`, { ...updatedRoom, hotel_id: activeHotelId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms', activeHotelId] });
-      toast.success('Room created successfully', {
+      toast.success('Room updated successfully', {
         style: {
           background: '#1e293b',
           color: '#fff',
@@ -48,29 +63,16 @@ export default function AddRoomModal({ isOpen, onClose }: AddRoomModalProps) {
         },
       });
       onClose();
-      setFormData({
-        room_number: '',
-        room_category_id: '',
-        floor: '',
-        capacity: 2,
-        extra_person_charge: 0,
-        early_checkin_fee: 0,
-        late_checkout_fee: 0
-      });
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create room');
+      toast.error(error.response?.data?.message || 'Failed to update room');
     }
   });
 
-  if (!isOpen) return null;
+  if (!room) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.room_category_id) {
-      toast.error('Please select a room category');
-      return;
-    }
     mutation.mutate({
       ...formData,
       room_category_id: parseInt(formData.room_category_id),
@@ -91,9 +93,9 @@ export default function AddRoomModal({ isOpen, onClose }: AddRoomModalProps) {
           <div className="absolute top-0 right-0 w-32 h-32 bg-gold/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
           <div className="relative z-10 text-white">
             <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
-              <Box className="text-gold" /> Add New Room
+              <Box className="text-gold" /> Edit Room {room.room_number}
             </h2>
-            <p className="text-navy-100/60 text-sm mt-1">Define new inventory for your hotel property</p>
+            <p className="text-navy-100/60 text-sm mt-1">Update inventory details and status</p>
           </div>
           <button 
             onClick={onClose}
@@ -117,7 +119,6 @@ export default function AddRoomModal({ isOpen, onClose }: AddRoomModalProps) {
                    type="text" 
                    value={formData.room_number}
                    onChange={e => setFormData({ ...formData, room_number: e.target.value })}
-                   placeholder="e.g. 101, A-1"
                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-gold focus:ring-4 focus:ring-gold/5 transition-all font-medium"
                  />
                </div>
@@ -141,20 +142,7 @@ export default function AddRoomModal({ isOpen, onClose }: AddRoomModalProps) {
 
                <div>
                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block flex items-center gap-2">
-                   <Layers size={14} className="text-gold" /> Floor
-                 </label>
-                 <input 
-                   type="number" 
-                   value={formData.floor}
-                   onChange={e => setFormData({ ...formData, floor: e.target.value })}
-                   placeholder="e.g. 1, 2"
-                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-gold focus:ring-4 focus:ring-gold/5 transition-all font-medium"
-                 />
-               </div>
-
-               <div>
-                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block flex items-center gap-2">
-                   <Box size={14} className="text-gold" /> Operating Status
+                   <CheckCircle2 size={14} className="text-gold" /> Operating Status
                  </label>
                  <select 
                    required
@@ -237,9 +225,9 @@ export default function AddRoomModal({ isOpen, onClose }: AddRoomModalProps) {
             <button 
               type="submit"
               disabled={mutation.isPending}
-              className="bg-gold hover:bg-gold/90 text-navy font-bold px-8 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-gold/20 transition transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+              className="bg-navy hover:bg-navy/90 text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-navy/20 transition transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
             >
-              {mutation.isPending ? 'Creating...' : <><Save size={18} /> Create Room</>}
+              {mutation.isPending ? 'Updating...' : <><Save size={18} /> Update Room</>}
             </button>
           </div>
         </form>
