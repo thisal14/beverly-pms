@@ -1,10 +1,16 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+
 import api from '../../api/axios';
 import { useHotel } from '../../context/HotelContext';
 import { Plus, Edit2, Bed } from 'lucide-react';
+import AddRoomModal from './AddRoomModal';
+
 
 export default function RoomsPage() {
   const { activeHotelId } = useHotel();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
 
   const { data: rooms, isLoading } = useQuery({
     queryKey: ['rooms', activeHotelId],
@@ -23,9 +29,13 @@ export default function RoomsPage() {
            <h1 className="text-3xl font-serif font-bold text-navy flex items-center gap-3"><Bed className="text-gold" size={32} /> Room Management</h1>
            <p className="text-gray-500 mt-2 font-medium">Manage hotel inventory and operating status</p>
         </div>
-        <button className="bg-navy hover:bg-navy/90 text-white font-medium px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition transform hover:-translate-y-0.5">
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="bg-navy hover:bg-navy/90 text-white font-medium px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition transform hover:-translate-y-0.5"
+        >
           <Plus size={18} /> Add New Room
         </button>
+
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -69,6 +79,11 @@ export default function RoomsPage() {
           </table>
         </div>
       </div>
+      <AddRoomModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+      />
     </div>
   );
 }
+
