@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createReservation, getReservations, getReservationById } from '../controllers/reservation.controller';
+import { createReservation, getReservations, getReservationById, getReservationTimeline } from '../controllers/reservation.controller';
 import { checkin } from '../controllers/checkin.controller';
 import { checkout } from '../controllers/checkout.controller';
 import { addPayment } from '../controllers/payment.controller';
@@ -11,6 +11,7 @@ router.use(authenticateToken);
 
 router.post('/', createReservation);
 router.get('/', getReservations);
+router.get('/timeline', getReservationTimeline);
 router.get('/:id', getReservationById);
 
 router.post('/:id/checkin', checkin);

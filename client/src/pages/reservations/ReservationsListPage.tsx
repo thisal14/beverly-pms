@@ -3,13 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { useHotel } from '../../context/HotelContext';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Plus, Search, Calendar } from 'lucide-react';
+import { Plus, Search, Calendar, List, Columns } from 'lucide-react';
+import TimelineView from './TimelineView';
+import { format, addDays } from 'date-fns';
 
 export default function ReservationsListPage() {
   const { activeHotelId } = useHotel();
   const { hotelSlug } = useParams();
   const navigate = useNavigate();
   const [filterStatus, setFilterStatus] = useState('');
+  const [view, setView] = useState<'list' | 'timeline'>('list');
+  const [dateFrom, setDateFrom] = useState(format(addDays(new Date(), -3), 'yyyy-MM-dd'));
+  const [dateTo, setDateTo] = useState(format(addDays(new Date(), 17), 'yyyy-MM-dd'));
 
   const { data, isLoading } = useQuery({
     queryKey: ['reservations', activeHotelId, filterStatus],
@@ -27,11 +32,37 @@ export default function ReservationsListPage() {
           <h1 className="text-3xl font-serif font-bold text-navy">Reservations</h1>
           <p className="text-gray-500 mt-1">Manage network bookings and guest stays</p>
         </div>
-        <Link to={`/${hotelSlug}/reservations/new`} className="bg-gold hover:bg-gold/90 text-white font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition transform hover:-translate-y-0.5">
-          <Plus size={18} /> New Reservation
-        </Link>
+        <div className="flex items-center gap-3">
+          <div className="bg-white rounded-lg p-1 border border-gray-200 shadow-sm flex items-center">
+            <button 
+              onClick={() => setView('list')} 
+              className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-2 transition-all ${view === 'list' ? 'bg-navy text-white shadow-md' : 'text-gray-500 hover:text-navy'}`}
+            >
+              <List size={16} /> List
+            </button>
+            <button 
+              onClick={() => setView('timeline')} 
+              className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-2 transition-all ${view === 'timeline' ? 'bg-navy text-white shadow-md' : 'text-gray-500 hover:text-navy'}`}
+            >
+              <Columns size={16} /> Timeline
+            </button>
+          </div>
+          <Link to={`/${hotelSlug}/reservations/new`} className="bg-gold hover:bg-gold/90 text-navy font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm shadow-gold/20 transition transform hover:-translate-y-0.5 relative z-50">
+            <Plus size={18} /> New Reservation
+          </Link>
+        </div>
       </div>
 
+      {view === 'timeline' ? (
+        <TimelineView 
+          dateFrom={dateFrom} 
+          dateTo={dateTo} 
+          onDateChange={(start, end) => {
+            setDateFrom(start);
+            setDateTo(end);
+          }} 
+        />
+      ) : (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-wrap gap-4 items-center justify-between">
            <div className="flex items-center gap-2">
@@ -102,6 +133,7 @@ export default function ReservationsListPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

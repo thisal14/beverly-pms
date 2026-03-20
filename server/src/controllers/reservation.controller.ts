@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { query, pool } from '../db/connection';
 import { z } from 'zod';
 import { logAudit } from '../utils/audit.utils';
-import { RoomCategory, PackageType, Room } from '@beverly-pms/shared';
+import { RoomCategory, PackageType, Room, UserRole } from '@beverly-pms/shared';
 
 const createReservationSchema = z.object({
   hotel_id: z.number(),
@@ -258,6 +258,77 @@ export const getReservationById = async (req: Request, res: Response, next: Next
     reservation.guests = guests;
 
     res.status(200).json({ success: true, data: reservation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getReservationTimeline = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hotelId = req.user?.role === UserRole.SUPER_ADMIN && req.query.hotel_id 
+      ? parseInt(req.query.hotel_id as string) 
+      : req.user!.hotel_id;
+      
+    // Default to a 30-day window around today if not provided
+    const today = new Date();
+    const defaultStart = new Date(today);
+    defaultStart.setDate(today.getDate() - 7);
+    const defaultEnd = new Date(today);
+    defaultEnd.setDate(today.getDate() + 23);
+
+    const from = (req.query.start_date as string) || defaultStart.toISOString().split('T')[0];
+    const to = (req.query.end_date as string) || defaultEnd.toISOString().split('T')[0];
+
+    // 1. Fetch all rooms for the hotel
+    const roomsSql = `
+      SELECT r.id, r.room_number, r.floor, r.capacity, r.status as room_status, c.name as category_name
+      FROM rooms r
+      JOIN room_categories c ON r.room_category_id = c.id
+      WHERE r.hotel_id = ? AND r.is_active = TRUE
+      ORDER BY r.room_number ASC
+    `;
+    const rooms = await query<any[]>(roomsSql, [hotelId]);
+
+    // 2. Fetch reservations overlapping the date range
+    const resSql = `
+      SELECT 
+        res.id as reservation_id,
+        res.reservation_number,
+        res.customer_name,
+        res.status as reservation_status,
+        res.scheduled_checkin,
+        res.scheduled_checkout,
+        rr.room_id
+      FROM reservations res
+      JOIN reservation_rooms rr ON res.id = rr.reservation_id
+      WHERE res.hotel_id = ? 
+        AND res.status != 'cancelled'
+        AND (
+          (res.scheduled_checkin <= ? AND res.scheduled_checkout >= ?) OR
+          (res.scheduled_checkin BETWEEN ? AND ?) OR
+          (res.scheduled_checkout BETWEEN ? AND ?)
+        )
+    `;
+    
+    // The dates need time components for accurate overlap checking
+    const fromTime = from + ' 00:00:00';
+    const toTime = to + ' 23:59:59';
+    
+    const reservations = await query<any[]>(resSql, [
+      hotelId, 
+      toTime, fromTime, // overlapping
+      fromTime, toTime, // starts inside
+      fromTime, toTime  // ends inside
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        rooms,
+        reservations
+      }
+    });
+
   } catch (error) {
     next(error);
   }
