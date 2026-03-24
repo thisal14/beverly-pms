@@ -42,7 +42,6 @@ export default function NewReservationPage() {
   });
 
   // Derived state for pricing overview
-  const selectedPackage = packages.find((p: any) => p.id.toString() === form.packageId);
   
   const calculateTotal = () => {
     return form.selectedRooms.reduce((acc, r) => {

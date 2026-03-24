@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { pool } from '../db/connection';
+import { db } from '../db/connection';
+import { sql } from 'kysely';
 import { z } from 'zod';
 import { logAudit } from '../utils/audit.utils';
+import { AppError } from '../utils/app-error';
 
 const paymentSchema = z.object({
   amount: z.number().min(0.01),
@@ -11,32 +13,40 @@ const paymentSchema = z.object({
 });
 
 export const addPayment = async (req: Request, res: Response, next: NextFunction) => {
-  const connection = await pool.getConnection();
   try {
     const id = parseInt(req.params.id);
     const data = paymentSchema.parse(req.body);
 
-    await connection.beginTransaction();
+    await db.transaction().execute(async (trx) => {
+      const reservation = await trx
+        .selectFrom('reservations')
+        .select(['id', 'paid_amount'])
+        .where('id', '=', id)
+        .forUpdate()
+        .executeTakeFirst();
 
-    const [reservations] = await connection.query<any[]>(`SELECT * FROM reservations WHERE id = ? FOR UPDATE`, [id]);
-    if (!reservations.length) throw new Error('Reservation not found');
+      if (!reservation) throw new AppError('Reservation not found', 404);
 
-    await connection.query(
-      `INSERT INTO payments (reservation_id, amount, payment_method, payment_stage, reference_number, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, data.amount, data.method, data.stage, data.reference || null, req.user!.id]
-    );
+      await trx.insertInto('payments').values({
+        reservation_id:   id,
+        amount:           data.amount,
+        payment_method:   data.method,
+        payment_stage:    data.stage,
+        reference_number: data.reference || null,
+        created_by:       req.user!.id,
+      }).execute();
 
-    await connection.query(`UPDATE reservations SET paid_amount = paid_amount + ? WHERE id = ?`, [data.amount, id]);
+      await trx
+        .updateTable('reservations')
+        .set({ paid_amount: sql`paid_amount + ${data.amount}` } as any)
+        .where('id', '=', id)
+        .execute();
+    });
 
-    await connection.commit();
     await logAudit(req, 'ADD_PAYMENT', 'payments', null, null, { reservation_id: id, amount: data.amount });
 
-    res.status(200).json({ success: true, message: 'Payment added' });
+    res.status(201).json({ success: true, message: 'Payment added' });
   } catch (error) {
-    await connection.rollback();
     next(error);
-  } finally {
-    connection.release();
   }
 };

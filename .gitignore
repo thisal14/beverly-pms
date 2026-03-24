@@ -5,3 +5,5 @@ build/
 .DS_Store
 client_build_output.txt
 final_build.txt
+credentials.txt
+*.credentials.txt

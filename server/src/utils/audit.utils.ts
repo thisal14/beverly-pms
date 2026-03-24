@@ -1,4 +1,4 @@
-import { query } from '../db/connection';
+import { db } from '../db/connection';
 import { Request } from 'express';
 
 export async function logAudit(
@@ -14,22 +14,16 @@ export async function logAudit(
     const hotelId = req?.user?.hotel_id || null;
     const ipAddress = req?.ip || null;
 
-    const sql = `
-      INSERT INTO audit_log 
-      (hotel_id, user_id, action, entity_type, entity_id, old_data, new_data, ip_address)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    await query(sql, [
-      hotelId,
-      userId,
+    await db.insertInto('audit_log').values({
+      hotel_id:    hotelId,
+      user_id:     userId,
       action,
-      entityType,
-      entityId,
-      oldData ? JSON.stringify(oldData) : null,
-      newData ? JSON.stringify(newData) : null,
-      ipAddress
-    ]);
+      entity_type: entityType,
+      entity_id:   entityId,
+      old_data:    oldData ? JSON.stringify(oldData) : null,
+      new_data:    newData ? JSON.stringify(newData) : null,
+      ip_address:  ipAddress,
+    }).execute();
   } catch (error) {
     console.error('Audit log failed:', error);
   }

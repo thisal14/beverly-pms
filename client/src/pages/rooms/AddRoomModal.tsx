@@ -53,6 +53,7 @@ export default function AddRoomModal({ isOpen, onClose }: AddRoomModalProps) {
         room_category_id: '',
         floor: '',
         capacity: 2,
+        status: 'available',
         extra_person_charge: 0,
         early_checkin_fee: 0,
         late_checkout_fee: 0

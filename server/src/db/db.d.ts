@@ -10,7 +10,8 @@ export interface Database {
   reservation_guests: ReservationGuestsTable
   payments: PaymentsTable
   users: UsersTable
-  audit_logs: AuditLogsTable
+  audit_log: AuditLogTable
+  hotel_sequences: HotelSequencesTable
 }
 
 export interface HotelsTable {
@@ -23,7 +24,6 @@ export interface HotelsTable {
   logo_url: string | null
   slug: string
   timezone: string
-  is_active: Generated<number>
   created_at: Generated<Date | string>
 }
 
@@ -35,8 +35,11 @@ export interface RoomsTable {
   floor: number | null
   status: 'available' | 'occupied' | 'dirty' | 'maintenance' | 'out_of_order'
   is_active: Generated<number>
-  extra_person_charge: string | number
   capacity: number
+  extra_person_charge: string | number
+  early_checkin_fee: string | number | null
+  late_checkout_fee: string | number | null
+  grace_period_checkout_minutes: number | null
   created_at: Generated<Date | string>
 }
 
@@ -46,6 +49,7 @@ export interface RoomCategoriesTable {
   name: string
   description: string | null
   base_price: string | number
+  sort_order: Generated<number>
   is_active: Generated<number>
   created_at: Generated<Date | string>
 }
@@ -57,6 +61,9 @@ export interface PackageTypesTable {
   description: string | null
   price_multiplier: string | number
   flat_price: string | number | null
+  min_hours: number | null
+  max_hours: number | null
+  sort_order: Generated<number>
   is_active: Generated<number>
   created_at: Generated<Date | string>
 }
@@ -68,16 +75,18 @@ export interface ReservationsTable {
   customer_name: string
   customer_phone: string
   customer_nic_passport: string
-  status: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show'
+  status: Generated<'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show' | 'reserved'>
   scheduled_checkin: Date | string
   scheduled_checkout: Date | string
   actual_checkin: Date | string | null
   actual_checkout: Date | string | null
   base_amount: string | number
   extra_person_charge: string | number
+  late_checkout_fee: string | number | null
+  early_checkin_fee: string | number | null
   total_amount: string | number
-  paid_amount: string | number
-  discount_amount: string | number
+  paid_amount: Generated<string | number>
+  discount_amount: Generated<string | number>
   cancellation_reason: string | null
   created_by: number
   created_at: Generated<Date | string>
@@ -99,12 +108,9 @@ export interface ReservationRoomsTable {
 export interface ReservationGuestsTable {
   id: Generated<number>
   reservation_id: number
-  name: string
+  guest_name: string
   nic_passport: string | null
-  phone: string | null
-  email: string | null
   is_primary: Generated<number>
-  created_at: Generated<Date | string>
 }
 
 export interface PaymentsTable {
@@ -112,7 +118,7 @@ export interface PaymentsTable {
   reservation_id: number
   amount: string | number
   payment_method: 'cash' | 'card' | 'bank_transfer' | 'online' | 'other'
-  payment_stage: 'reservation' | 'checkin' | 'checkout' | 'additional'
+  payment_stage: 'reservation' | 'checkin' | 'checkout' | 'adjustment'
   reference_number: string | null
   notes: string | null
   created_by: number
@@ -124,20 +130,27 @@ export interface UsersTable {
   hotel_id: number | null
   name: string
   email: string
-  password: string
+  password_hash: string
   role: 'super_admin' | 'hotel_admin' | 'receptionist' | 'manager'
   is_active: Generated<number>
   created_at: Generated<Date | string>
 }
 
-export interface AuditLogsTable {
+export interface AuditLogTable {
   id: Generated<number>
+  hotel_id: number | null
   user_id: number | null
   action: string
-  table_name: string | null
-  record_id: number | null
-  old_values: any | null
-  new_values: any | null
+  entity_type: string | null
+  entity_id: number | null
+  old_data: any | null
+  new_data: any | null
   ip_address: string | null
   created_at: Generated<Date | string>
+}
+
+export interface HotelSequencesTable {
+  hotel_id: number
+  sequence_date: Date | string
+  seq: Generated<number>
 }

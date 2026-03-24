@@ -19,6 +19,15 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   }
 }
 
+/**
+ * Coarse route-group guard: restricts access to users with one of the specified roles.
+ *
+ * For fine-grained, action-level control (e.g., per-endpoint permissions), use
+ * `requirePermission()` from `utils/authorization.ts` instead.
+ *
+ * FUTURE PERMISSION MODULE: `requirePermission()` is the integration point — only the
+ * `can()` function inside authorization.ts needs to change when the module is added.
+ */
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -47,10 +56,18 @@ export function requireHotel(req: Request, res: Response, next: NextFunction) {
     return next();
   }
 
-  // For routes with :hotelId
+  // 1. Enforce hotel scoping via route param (e.g., /hotels/:hotelId/...)
   const requestHotelId = req.params.hotelId;
-  
   if (requestHotelId && parseInt(requestHotelId) !== req.user.hotel_id) {
+    return res.status(403).json({ success: false, message: 'Forbidden: Wrong hotel context' });
+  }
+
+  // 2. Enforce hotel scoping via query param (e.g., ?hotel_id=...)
+  if (req.query.hotel_id === undefined) {
+    // If a normal user asks for a global list, implicitly scope it to their hotel
+    req.query.hotel_id = String(req.user.hotel_id);
+  } else if (parseInt(req.query.hotel_id as string) !== req.user.hotel_id) {
+    // If they explicitly ask for another hotel, block them
     return res.status(403).json({ success: false, message: 'Forbidden: Wrong hotel context' });
   }
 

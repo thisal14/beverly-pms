@@ -7,6 +7,11 @@ dotenv.config();
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'secret';
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret';
 
+/** Access token lifetime in milliseconds (15 minutes). */
+export const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
+/** Refresh token lifetime in milliseconds (7 days). */
+export const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export interface TokenPayload {
   id: number;
   role: UserRole;

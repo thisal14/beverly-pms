@@ -1,12 +1,17 @@
 import { Router } from 'express';
-import { getCategories, createCategory, getRooms, createRoom, updateRoom, getPackages, createPackage, getUsers, createUser } from '../controllers/admin.controller';
+import { 
+  getCategories, createCategory, 
+  getRooms, createRoom, updateRoom, 
+  getPackages, createPackage, 
+  getUsers, createUser, updateUser, toggleUserStatus 
+} from '../controllers/admin.controller';
 import { authenticateToken, requireRole } from '../middleware/auth.middleware';
 import { UserRole } from '@beverly-pms/shared';
 
 const router = Router();
 
-router.use(authenticateToken);
 // Super admins and admins have access to CRUD setup tools.
+router.use(authenticateToken);
 router.use(requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN));
 
 router.get('/categories', getCategories);
@@ -21,5 +26,7 @@ router.post('/packages', createPackage);
 
 router.get('/users', getUsers);
 router.post('/users', createUser);
+router.put('/users/:id', updateUser);
+router.patch('/users/:id/status', toggleUserStatus);
 
 export default router;

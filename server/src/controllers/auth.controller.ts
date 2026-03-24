@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
-import { queryOne } from '../db/connection';
+import { db } from '../db/connection';
 import { User, Hotel } from '@beverly-pms/shared';
-import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.utils';
+import { signAccessToken, signRefreshToken, verifyRefreshToken, ACCESS_TOKEN_TTL_MS, REFRESH_TOKEN_TTL_MS } from '../utils/jwt.utils';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -14,42 +14,49 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   try {
     const { email, password } = loginSchema.parse(req.body);
 
-    const user = await queryOne<User>(`SELECT * FROM users WHERE email = ? AND is_active = TRUE`, [email]);
+    const user = await db
+      .selectFrom('users')
+      .selectAll()
+      .where('email', '=', email)
+      .where('is_active', '=', 1)
+      .executeTakeFirst();
+
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Spec uses password_hash in DB
-    const dbUser = user as any; 
-    const match = await bcrypt.compare(password, dbUser.password_hash);
+    const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    let hotel: Hotel | null = null;
+    let hotel: { id: number; name: string; slug: string } | null = null;
     if (user.hotel_id) {
-      hotel = await queryOne<Hotel>(`SELECT id, name, slug FROM hotels WHERE id = ?`, [user.hotel_id]);
+      hotel = await db
+        .selectFrom('hotels')
+        .select(['id', 'name', 'slug'])
+        .where('id', '=', user.hotel_id)
+        .executeTakeFirst() ?? null;
     }
 
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
+    const userAsShared = user as unknown as User;
+    const accessToken = signAccessToken(userAsShared);
+    const refreshToken = signRefreshToken(userAsShared);
 
     const isProd = process.env.NODE_ENV === 'production';
-    
-    // Set HttpOnly cookie for refresh token
+
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: REFRESH_TOKEN_TTL_MS
     });
 
-    // Set HttpOnly cookie for access token
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
-      maxAge: 15 * 60 * 1000 // 15 minutes
+      maxAge: ACCESS_TOKEN_TTL_MS
     });
 
     const userResponse = {
@@ -74,26 +81,35 @@ export const refresh = async (req: Request, res: Response, next: NextFunction) =
     }
 
     const payload = verifyRefreshToken(token);
-    
-    // Fetch latest user to ensure they are still active
-    const user = await queryOne<User>(`SELECT * FROM users WHERE id = ? AND is_active = TRUE`, [payload.id]);
+
+    const user = await db
+      .selectFrom('users')
+      .selectAll()
+      .where('id', '=', payload.id)
+      .where('is_active', '=', 1)
+      .executeTakeFirst();
+
     if (!user) {
       return res.status(401).json({ success: false, message: 'User not found or inactive' });
     }
 
-    const newAccessToken = signAccessToken(user);
-    
-    // Set new HttpOnly cookie for access token
+    const userAsShared = user as unknown as User;
+    const newAccessToken = signAccessToken(userAsShared);
+
     res.cookie('accessToken', newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 15 * 60 * 1000 // 15 minutes
+      maxAge: ACCESS_TOKEN_TTL_MS
     });
 
-    let hotel: Hotel | null = null;
+    let hotel: { id: number; name: string; slug: string } | null = null;
     if (user.hotel_id) {
-      hotel = await queryOne<Hotel>(`SELECT id, name, slug FROM hotels WHERE id = ?`, [user.hotel_id]) || null;
+      hotel = await db
+        .selectFrom('hotels')
+        .select(['id', 'name', 'slug'])
+        .where('id', '=', user.hotel_id)
+        .executeTakeFirst() ?? null;
     }
 
     const userResponse = {

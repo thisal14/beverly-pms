@@ -32,10 +32,11 @@ export default function Sidebar() {
           </>
         )}
         
-        {isSuperAdmin && (
-          <>
-            <div className="pt-2 pb-2 px-3 text-xs font-semibold text-gray-400/80 uppercase tracking-wider">Super Admin</div>
-            <NavItem to="/admin/hotels" icon={<Building2 size={18} />} label="Hotels" />
+         {isSuperAdmin && (
+           <>
+             <div className="pt-2 pb-2 px-3 text-xs font-semibold text-gray-400/80 uppercase tracking-wider">Super Admin</div>
+             <NavItem to="/admin/dashboard" icon={<Home size={18} />} label="Dashboard" />
+             <NavItem to="/admin/hotels" icon={<Building2 size={18} />} label="Hotels" />
             <NavItem to="/admin/users" icon={<Users size={18} />} label="All Users" />
             <NavItem to="/admin/reports" icon={<FileBarChart size={18} />} label="Global Reports" />
           </>

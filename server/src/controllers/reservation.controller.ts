@@ -31,10 +31,10 @@ export const createReservation = async (req: Request, res: Response, next: NextF
     res.status(201).json({ success: true, message: 'Reservation created', data: result });
   } catch (error: any) {
     if (error.message && error.message.includes('not found')) {
-       return res.status(400).json({ success: false, message: error.message });
+      return res.status(400).json({ success: false, message: error.message });
     }
     if (error.message && error.message.includes('no longer available')) {
-       return res.status(409).json({ success: false, message: error.message });
+      return res.status(409).json({ success: false, message: error.message });
     }
     next(error);
   }
@@ -69,7 +69,7 @@ export const getReservationById = async (req: Request, res: Response, next: Next
     res.status(200).json({ success: true, data });
   } catch (error: any) {
     if (error.message === 'Reservation not found') {
-       return res.status(404).json({ success: false, message: error.message });
+      return res.status(404).json({ success: false, message: error.message });
     }
     next(error);
   }
@@ -77,14 +77,14 @@ export const getReservationById = async (req: Request, res: Response, next: Next
 
 export const getReservationTimeline = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hotelId = req.user?.role === UserRole.SUPER_ADMIN && req.query.hotel_id 
-      ? parseInt(req.query.hotel_id as string) 
+    const hotelId = req.user?.role === UserRole.SUPER_ADMIN && req.query.hotel_id
+      ? parseInt(req.query.hotel_id as string)
       : req.user!.hotel_id;
-      
+
     if (!hotelId) {
       return res.status(400).json({ success: false, message: 'Hotel ID is required' });
     }
-      
+
     // Default to a 30-day window around today if not provided
     const today = new Date();
     const defaultStart = new Date(today);

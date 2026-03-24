@@ -1,20 +1,48 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { useHotel } from '../../context/HotelContext';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Edit2, Users, Shield } from 'lucide-react';
+import { Plus, Edit2, Users, Shield, UserX, UserCheck } from 'lucide-react';
+import UserModal from '../../components/admin/UserModal';
+import toast from 'react-hot-toast';
 
 export default function UsersPage() {
   const { activeHotelId } = useHotel();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
-  // Super admin fetches all users (or filter heavily). Admin fetches hotel users.
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  // Super admin fetches all users if no hotel selected. Admin fetches hotel users.
   const qs = user?.role === 'super_admin' ? '' : `?hotel_id=${activeHotelId}`;
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users', qs],
     queryFn: async () => (await api.get(`/admin/users${qs}`)).data.data
   });
+
+  const handleToggleStatus = async (userToToggle: any) => {
+    try {
+      const newStatus = !userToToggle.is_active;
+      await api.patch(`/admin/users/${userToToggle.id}/status`, { is_active: newStatus });
+      toast.success(`User ${newStatus ? 'activated' : 'deactivated'}`);
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const openAdd = () => {
+    setSelectedUser(null);
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (u: any) => {
+    setSelectedUser(u);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in pb-12">
@@ -23,7 +51,10 @@ export default function UsersPage() {
            <h1 className="text-3xl font-serif font-bold text-navy flex items-center gap-3"><Users className="text-gold" size={32} /> Staff Management</h1>
            <p className="text-gray-500 mt-2 font-medium">Manage system users, roles, and access per property</p>
         </div>
-        <button className="bg-navy hover:bg-navy/90 text-white font-medium px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition transform hover:-translate-y-0.5">
+        <button 
+          onClick={openAdd}
+          className="bg-navy hover:bg-navy/90 text-white font-medium px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition transform hover:-translate-y-0.5"
+        >
           <Plus size={18} /> Add User
         </button>
       </div>
@@ -46,14 +77,14 @@ export default function UsersPage() {
                {!isLoading && users?.map((u: any) => (
                  <tr key={u.id} className="hover:bg-gray-50/50 transition">
                    <td className="px-6 py-4 font-bold text-gray-800 flex items-center gap-3">
-                     <span className="w-9 h-9 rounded-full bg-navy/5 text-navy flex items-center justify-center font-bold text-sm shadow-sm border border-navy/10">{u.name[0]}</span>
+                     <span className="w-9 h-9 rounded-full bg-navy/5 text-navy flex items-center justify-center font-bold text-sm shadow-sm border border-navy/10">{u.name?.[0] || '?'}</span>
                      {u.name}
                    </td>
                    <td className="px-6 py-4 text-gray-600 font-medium">{u.email}</td>
                    <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 font-bold text-navy/80 tracking-wide capitalize text-xs">
                         {u.role === 'super_admin' ? <Shield size={14} className="text-gold" /> : null}
-                        {u.role.replace('_', ' ')}
+                        {u.role?.replace(/_/g, ' ') || 'User'}
                       </div>
                    </td>
                    <td className="px-6 py-4 text-gray-500 text-sm font-medium">
@@ -64,8 +95,20 @@ export default function UsersPage() {
                         {u.is_active ? 'Active' : 'Inactive'}
                       </span>
                    </td>
-                   <td className="px-6 py-4 text-right">
-                      <button className="text-gray-400 hover:text-navy hover:bg-gray-100 p-2 rounded-lg transition border border-transparent hover:border-gray-200"><Edit2 size={16} /></button>
+                   <td className="px-6 py-4 text-right flex items-center justify-end gap-2 text-gray-400">
+                      <button 
+                        onClick={() => openEdit(u)}
+                        className="hover:text-navy hover:bg-gray-100 p-2 rounded-lg transition border border-transparent hover:border-gray-200"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleToggleStatus(u)}
+                        className={`p-2 rounded-lg transition border border-transparent ${u.is_active ? 'hover:text-red-600 hover:bg-red-50 hover:border-red-100' : 'hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100'}`}
+                        title={u.is_active ? 'Deactivate' : 'Activate'}
+                      >
+                        {u.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
+                      </button>
                    </td>
                  </tr>
                ))}
@@ -76,6 +119,14 @@ export default function UsersPage() {
           </table>
         </div>
       </div>
+
+      <UserModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['users'] })}
+        user={selectedUser}
+        isSuperAdmin={user?.role === 'super_admin'}
+      />
     </div>
   );
 }

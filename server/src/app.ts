@@ -10,6 +10,7 @@ import roomRoutes from './routes/room.routes';
 import hotelRoutes from './routes/hotel.routes';
 import adminRoutes from './routes/admin.routes';
 import reportRoutes from './routes/report.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api', roomRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // General Error Handler
 app.use(errorHandler);

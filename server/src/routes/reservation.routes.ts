@@ -3,11 +3,12 @@ import { createReservation, getReservations, getReservationById, getReservationT
 import { checkin } from '../controllers/checkin.controller';
 import { checkout } from '../controllers/checkout.controller';
 import { addPayment } from '../controllers/payment.controller';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { authenticateToken, requireHotel } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.use(authenticateToken);
+router.use(requireHotel);
 
 router.post('/', createReservation);
 router.get('/', getReservations);

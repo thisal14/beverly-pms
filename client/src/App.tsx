@@ -17,6 +17,7 @@ const RoomsPage = React.lazy(() => import('./pages/rooms/RoomsPage'));
 const HotelsPage = React.lazy(() => import('./pages/admin/HotelsPage'));
 const SettingsPage = React.lazy(() => import('./pages/settings/SettingsPage'));
 const UsersPage = React.lazy(() => import('./pages/admin/UsersPage'));
+const SuperAdminDashboard = React.lazy(() => import('./pages/admin/SuperAdminDashboard'));
 const ReportsPage = React.lazy(() => import('./pages/reports/ReportsPage'));
 
 // A simple fallback loading component
@@ -58,6 +59,7 @@ function App() {
             <Route path="/:hotelSlug/reports" element={<ReportsPage />} />
             
             {/* Super Admin Routes */}
+            <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
             <Route path="/admin/hotels" element={<HotelsPage />} />
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/reports" element={<ReportsPage />} />

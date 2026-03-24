@@ -35,7 +35,8 @@ export const db = new Kysely<Database>({
 });
 
 /**
- * Execute a query with type casting (Legacy raw SQL support)
+ * Execute a query with type casting.
+ * @deprecated Use the Kysely `db` instance instead for new code.
  */
 export async function query<T>(sql: string, params?: any[]): Promise<T> {
   const [results] = await pool.query(sql, params);
@@ -43,7 +44,8 @@ export async function query<T>(sql: string, params?: any[]): Promise<T> {
 }
 
 /**
- * Get a single row (Legacy raw SQL support)
+ * Get a single row.
+ * @deprecated Use the Kysely `db` instance instead for new code.
  */
 export async function queryOne<T>(sql: string, params?: any[]): Promise<T | null> {
   const [results] = await pool.query(sql, params);
